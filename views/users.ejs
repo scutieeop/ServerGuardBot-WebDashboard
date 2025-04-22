@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= config.webDashboard.serverName %> - Kayıtlı Kullanıcılar</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="<%= config.webDashboard.serverLogo %>" type="image/png">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <img src="<%= config.webDashboard.serverLogo %>" alt="Logo" class="navbar-logo">
+        <%= config.webDashboard.serverName %>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="/"><i class="bi bi-house-door-fill"></i> Ana Sayfa</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="/dashboard"><i class="bi bi-speedometer2"></i> Kontrol Paneli</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Çıkış</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-4">
+    <div class="row">
+      <div class="col-md-3">
+        <div class="card mb-4">
+          <div class="card-body text-center">
+            <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="<%= user.username %>" class="img-fluid rounded-circle mb-3" style="width: 100px; height: 100px;">
+            <h5 class="card-title"><%= user.username %></h5>
+            <p class="card-text"><small class="text-muted">ID: <%= user.id %></small></p>
+            <hr>
+            <h6>Sunucu İstatistikleri</h6>
+            <div class="row text-center mt-3">
+              <div class="col-6">
+                <h4><%= guild.memberCount %></h4>
+                <small>Üye</small>
+              </div>
+              <div class="col-6">
+                <h4><%= registeredUsers.length %></h4>
+                <small>Kayıtlı</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="list-group mb-4">
+          <a href="/dashboard" class="list-group-item list-group-item-action">
+            <i class="bi bi-speedometer2 me-2"></i> Genel Bakış
+          </a>
+          <a href="/dashboard/users" class="list-group-item list-group-item-action active">
+            <i class="bi bi-people-fill me-2"></i> Kayıtlı Kullanıcılar
+          </a>
+          <a href="/dashboard/devices" class="list-group-item list-group-item-action">
+            <i class="bi bi-laptop me-2"></i> Cihaz İstatistikleri
+          </a>
+        </div>
+      </div>
+      
+      <div class="col-md-9">
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Kayıtlı Kullanıcılar</h5>
+            <div>
+              <button class="btn btn-sm btn-outline-secondary me-2" id="exportCsv">
+                <i class="bi bi-file-earmark-excel me-1"></i> CSV İndir
+              </button>
+              <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#filterModal">
+                <i class="bi bi-funnel me-1"></i> Filtrele
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-hover" id="usersTable">
+                <thead>
+                  <tr>
+                    <th scope="col">Avatar</th>
+                    <th scope="col">Kullanıcı Adı</th>
+                    <th scope="col">Sunucu İsmi</th>
+                    <th scope="col">Kayıt Tarihi</th>
+                    <th scope="col">Cinsiyet</th>
+                    <th scope="col">Yaş</th>
+                    <th scope="col">Cihaz</th>
+                    <th scope="col">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% registeredUsers.forEach(user => { %>
+                    <tr>
+                      <td>
+                        <img src="https://cdn.discordapp.com/avatars/<%= user.userID %>/<%= user.avatar %>.png" alt="<%= user.username %>" class="rounded-circle" width="40" height="40">
+                      </td>
+                      <td><%= user.username %></td>
+                      <td><%= user.nickname %></td>
+                      <td data-sort="<%= user.registrationDate.getTime() %>">
+                        <%= user.registrationDate.toLocaleDateString('tr-TR') %>
+                        <small class="text-muted d-block"><%= user.registrationDate.toLocaleTimeString('tr-TR') %></small>
+                      </td>
+                      <td>
+                        <% if (user.gender === 'male') { %>
+                          <span class="badge bg-primary"><i class="bi bi-gender-male me-1"></i> Erkek</span>
+                        <% } else if (user.gender === 'female') { %>
+                          <span class="badge bg-danger"><i class="bi bi-gender-female me-1"></i> Kadın</span>
+                        <% } else { %>
+                          <span class="badge bg-secondary">Belirtilmemiş</span>
+                        <% } %>
+                      </td>
+                      <td><%= user.age || 'Belirtilmemiş' %></td>
+                      <td>
+                        <% if (user.device) { %>
+                          <% if (user.device.includes('desktop')) { %>
+                            <i class="bi bi-pc-display" title="Masaüstü"></i>
+                          <% } else if (user.device.includes('mobile')) { %>
+                            <i class="bi bi-phone" title="Mobil"></i>
+                          <% } else if (user.device.includes('web')) { %>
+                            <i class="bi bi-globe" title="Web Tarayıcı"></i>
+                          <% } else { %>
+                            <i class="bi bi-question-circle" title="Bilinmiyor"></i>
+                          <% } %>
+                          <%= user.device %>
+                        <% } else { %>
+                          <span class="text-muted">Bilinmiyor</span>
+                        <% } %>
+                      </td>
+                      <td>
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#userModal" 
+                                data-user-id="<%= user.userID %>" data-username="<%= user.username %>">
+                          <i class="bi bi-info-circle"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">İstatistikler</h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <h6 class="card-title">Cinsiyet Dağılımı</h6>
+                    <canvas id="genderChart" height="200"></canvas>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card mb-3">
+                  <div class="card-body">
+                    <h6 class="card-title">Cihaz Dağılımı</h6>
+                    <canvas id="deviceChart" height="200"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-12">
+                <div class="card">
+                  <div class="card-body">
+                    <h6 class="card-title">Yaş Dağılımı</h6>
+                    <canvas id="ageChart" height="200"></canvas>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Kullanıcı Detay Modal -->
+  <div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Kullanıcı Detayları</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="userModalBody">
+          <div class="text-center mb-3">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Yükleniyor...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filtre Modal -->
+  <div class="modal fade" id="filterModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Filtreleme Seçenekleri</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="filterForm">
+            <div class="mb-3">
+              <label for="genderFilter" class="form-label">Cinsiyet</label>
+              <select class="form-select" id="genderFilter">
+                <option value="">Tümü</option>
+                <option value="male">Erkek</option>
+                <option value="female">Kadın</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="deviceFilter" class="form-label">Cihaz</label>
+              <select class="form-select" id="deviceFilter">
+                <option value="">Tümü</option>
+                <option value="desktop">Masaüstü</option>
+                <option value="mobile">Mobil</option>
+                <option value="web">Web Tarayıcı</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="ageFilter" class="form-label">Yaş Aralığı</label>
+              <div class="input-group">
+                <input type="number" class="form-control" id="minAge" placeholder="Min">
+                <span class="input-group-text">-</span>
+                <input type="number" class="form-control" id="maxAge" placeholder="Max">
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+          <button type="button" class="btn btn-primary" id="applyFilters">Uygula</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bg-dark text-white py-4 mt-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6">
+          <h5><%= config.webDashboard.serverName %></h5>
+          <p class="small">© <%= new Date().getFullYear() %> Tüm hakları saklıdır.</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <p class="mb-0">
+            <a href="https://discord.gg/DAVET_KODU" class="text-white me-3"><i class="bi bi-discord"></i> Discord</a>
+            <a href="https://github.com/GITHUB_USER/REPO_NAME" class="text-white"><i class="bi bi-github"></i> GitHub</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // DataTables
+      const usersTable = $('#usersTable').DataTable({
+        language: {
+          url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json',
+        },
+        responsive: true,
+        order: [[3, 'desc']] // Kayıt tarihi - en yeni en üstte
+      });
+
+      // Filtreleme
+      $('#applyFilters').on('click', function() {
+        const gender = $('#genderFilter').val();
+        const device = $('#deviceFilter').val();
+        const minAge = $('#minAge').val();
+        const maxAge = $('#maxAge').val();
+        
+        $.fn.dataTable.ext.search.push(
+          function(settings, data, dataIndex) {
+            let pass = true;
+            
+            // Cinsiyet filtresi
+            if (gender && !data[4].includes(gender === 'male' ? 'Erkek' : 'Kadın')) {
+              pass = false;
+            }
+            
+            // Cihaz filtresi
+            if (device && !data[6].toLowerCase().includes(device.toLowerCase())) {
+              pass = false;
+            }
+            
+            // Yaş filtresi
+            const age = parseInt(data[5], 10);
+            if (minAge && !isNaN(age) && age < parseInt(minAge)) {
+              pass = false;
+            }
+            if (maxAge && !isNaN(age) && age > parseInt(maxAge)) {
+              pass = false;
+            }
+            
+            return pass;
+          }
+        );
+        
+        usersTable.draw();
+        $.fn.dataTable.ext.search.pop(); // Filtre fonksiyonunu kaldır
+        $('#filterModal').modal('hide');
+      });
+
+      // Kullanıcı detayları modal
+      $('#userModal').on('show.bs.modal', function (event) {
+        const button = $(event.relatedTarget);
+        const userId = button.data('user-id');
+        const username = button.data('username');
+        const modal = $(this);
+        
+        // Kullanıcı detaylarını getir
+        fetch(`/api/users/${userId}`)
+          .then(response => response.json())
+          .then(userData => {
+            let content = `
+              <div class="text-center mb-4">
+                <img src="https://cdn.discordapp.com/avatars/${userData.userID}/${userData.avatar}.png" 
+                     alt="${userData.username}" class="rounded-circle mb-2" width="100" height="100">
+                <h4>${userData.nickname || userData.username}</h4>
+                <p class="text-muted">@${userData.username}</p>
+              </div>
+              <div class="row">
+                <div class="col-6">
+                  <p><strong>Kullanıcı ID:</strong><br> ${userData.userID}</p>
+                  <p><strong>Kayıt Tarihi:</strong><br> ${new Date(userData.registrationDate).toLocaleString('tr-TR')}</p>
+                  <p><strong>Yaş:</strong><br> ${userData.age || 'Belirtilmemiş'}</p>
+                </div>
+                <div class="col-6">
+                  <p><strong>Cinsiyet:</strong><br> ${userData.gender === 'male' ? 'Erkek' : userData.gender === 'female' ? 'Kadın' : 'Belirtilmemiş'}</p>
+                  <p><strong>Cihaz:</strong><br> ${userData.device || 'Bilinmiyor'}</p>
+                  <p><strong>Kayıt Eden:</strong><br> ${userData.registeredBy || 'Bilinmiyor'}</p>
+                </div>
+              </div>
+              <hr>
+              <div class="d-flex justify-content-end">
+                <a href="https://discord.com/users/${userData.userID}" target="_blank" class="btn btn-sm btn-outline-primary me-2">
+                  <i class="bi bi-discord me-1"></i> Discord Profili
+                </a>
+              </div>
+            `;
+            modal.find('#userModalBody').html(content);
+          })
+          .catch(error => {
+            modal.find('#userModalBody').html(`<div class="alert alert-danger">Kullanıcı bilgileri alınamadı: ${error.message}</div>`);
+          });
+      });
+
+      // CSV İndirme
+      $('#exportCsv').on('click', function() {
+        const csvContent = [];
+        csvContent.push(['Kullanıcı Adı', 'Sunucu İsmi', 'Kayıt Tarihi', 'Cinsiyet', 'Yaş', 'Cihaz']);
+        
+        $('#usersTable tbody tr').each(function() {
+          const row = [];
+          $(this).find('td').each(function(index) {
+            if (index !== 0 && index !== 7) { // Avatar ve İşlemler kolonlarını atla
+              row.push($(this).text().trim().replace(/\s+/g, ' '));
+            }
+          });
+          csvContent.push(row);
+        });
+        
+        let csvString = '';
+        csvContent.forEach(function(rowArray) {
+          const row = rowArray.join(',');
+          csvString += row + '\r\n';
+        });
+        
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'kayitli_kullanicilar.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+
+      // Grafikler
+      const createCharts = () => {
+        // Cinsiyet dağılımı
+        const genderCtx = document.getElementById('genderChart').getContext('2d');
+        const genderData = {
+          labels: ['Erkek', 'Kadın', 'Belirtilmemiş'],
+          datasets: [{
+            data: [
+              <%= registeredUsers.filter(u => u.gender === 'male').length %>,
+              <%= registeredUsers.filter(u => u.gender === 'female').length %>,
+              <%= registeredUsers.filter(u => !u.gender || (u.gender !== 'male' && u.gender !== 'female')).length %>
+            ],
+            backgroundColor: ['#0d6efd', '#dc3545', '#6c757d']
+          }]
+        };
+        new Chart(genderCtx, {
+          type: 'doughnut',
+          data: genderData,
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'right',
+              }
+            }
+          }
+        });
+
+        // Cihaz dağılımı
+        const deviceCtx = document.getElementById('deviceChart').getContext('2d');
+        const deviceData = {
+          labels: ['Masaüstü', 'Mobil', 'Web', 'Bilinmiyor'],
+          datasets: [{
+            data: [
+              <%= registeredUsers.filter(u => u.device && u.device.includes('desktop')).length %>,
+              <%= registeredUsers.filter(u => u.device && u.device.includes('mobile')).length %>,
+              <%= registeredUsers.filter(u => u.device && u.device.includes('web')).length %>,
+              <%= registeredUsers.filter(u => !u.device).length %>
+            ],
+            backgroundColor: ['#0dcaf0', '#198754', '#6610f2', '#6c757d']
+          }]
+        };
+        new Chart(deviceCtx, {
+          type: 'doughnut',
+          data: deviceData,
+          options: {
+            responsive: true,
+            plugins: {
+              legend: {
+                position: 'right',
+              }
+            }
+          }
+        });
+
+        // Yaş dağılımı
+        const ageCtx = document.getElementById('ageChart').getContext('2d');
+        const ageGroups = {
+          '13-17': <%= registeredUsers.filter(u => u.age >= 13 && u.age <= 17).length %>,
+          '18-24': <%= registeredUsers.filter(u => u.age >= 18 && u.age <= 24).length %>,
+          '25-34': <%= registeredUsers.filter(u => u.age >= 25 && u.age <= 34).length %>,
+          '35+': <%= registeredUsers.filter(u => u.age >= 35).length %>,
+          'Belirtilmemiş': <%= registeredUsers.filter(u => !u.age).length %>
+        };
+        
+        const ageData = {
+          labels: Object.keys(ageGroups),
+          datasets: [{
+            label: 'Kullanıcı Sayısı',
+            data: Object.values(ageGroups),
+            backgroundColor: '#0d6efd',
+            borderWidth: 1
+          }]
+        };
+        
+        new Chart(ageCtx, {
+          type: 'bar',
+          data: ageData,
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  precision: 0
+                }
+              }
+            }
+          }
+        });
+      };
+
+      createCharts();
+    });
+  </script>
+</body>
+</html> 

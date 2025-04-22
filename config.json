@@ -1,0 +1,117 @@
+{
+  "token": "YOUR_BOT_TOKEN",
+  "clientId": "YOUR_CLIENT_ID",
+  "guildId": "YOUR_GUILD_ID",
+
+  "serverGuard": {
+    "enabled": true,
+    "voiceChannelId": "VOICE_CHANNEL_ID_FOR_BOT",
+    "logChannelId": "LOG_CHANNEL_ID",
+    "antiSpam": {
+      "enabled": true,
+      "maxMessages": 5,
+      "interval": 5000,
+      "punishment": "timeout" 
+    },
+    "antiRaid": {
+      "enabled": true,
+      "maxJoins": 5,
+      "interval": 10000,
+      "punishment": "ban"
+    },
+    "antiAd": {
+      "enabled": true,
+      "punishment": "delete",
+      "whitelistedChannels": ["REKLAM_IZIN_KANAL_ID"]
+    },
+    "antiCaps": {
+      "enabled": true,
+      "minLength": 8,
+      "percentage": 70
+    },
+    "autoMod": {
+      "enabled": true,
+      "maxWarnings": 3,
+      "warningTimeout": 86400000
+    },
+    "autoRole": {
+      "enabled": false,
+      "roleId": "OTO_ROL_ID"
+    },
+    "lockdownCommand": {
+      "enabled": true,
+      "allowedRoles": ["LOCKDOWN_YETKI_ROL_ID"]
+    }
+  },
+
+  "welcomeSystem": {
+    "enabled": true,
+    "welcomeChannelId": "WELCOME_CHANNEL_ID",
+    "registrationEnabled": true,
+    "registrationChannelId": "REGISTRATION_CHANNEL_ID",
+    "memberRoleId": "MEMBER_ROLE_ID",
+    "welcomeMessage": "Hoş geldin {user}! Sunucumuza katıldığın için teşekkürler!",
+    "welcomeColor": "#7289DA",
+    "welcomeTitle": "Yeni Üye!",
+    "welcomeFooter": "Kayıt olmak için kayıt kanalına göz atın.",
+    "welcomeImage": "https://i.imgur.com/4M34hi2.png",
+    "logging": {
+      "enabled": true,
+      "logChannelId": "KAYIT_LOG_KANAL_ID"
+    }
+  },
+
+  "registrationSystem": {
+    "enabled": true,
+    "requireAge": true,
+    "minimumAge": 13,
+    "nameAgeFormat": "{name} | {age}",
+    "staffRoleId": "KAYIT_YETKILI_ROL_ID",
+    "maleRoleId": "ERKEK_ROL_ID",
+    "femaleRoleId": "KADIN_ROL_ID",
+    "unregisteredRoleId": "KAYITSIZ_ROL_ID",
+    "registrationChannelId": "KAYIT_KANAL_ID",
+    "deviceTracking": true
+  },
+
+  "webDashboard": {
+    "enabled": true,
+    "port": 3000,
+    "secret": "CHANGE_THIS_SECRET",
+    "domain": "http://localhost:3000",
+    "callbackURL": "http://localhost:3000/auth/discord/callback",
+    "serverName": "Sunucu İsmi",
+    "serverDescription": "Sunucu Açıklaması",
+    "serverLogo": "https://i.imgur.com/4M34hi2.png",
+    "allowedRoles": ["ADMIN_ROLE_ID", "MOD_ROLE_ID"]
+  },
+
+  "profanityFilter": {
+    "enabled": true,
+    "punishment": "delete",
+    "warnUser": true,
+    "logChannel": "KUFUR_LOG_KANAL_ID",
+    "allowedChannels": ["KUFUR_IZIN_KANAL_ID"]
+  },
+  
+  "levelSystem": {
+    "enabled": true,
+    "xpPerMessage": 10,
+    "minXpPerMessage": 5,
+    "maxXpPerMessage": 15,
+    "cooldownSeconds": 60,
+    "levelUpMessage": "{user} seviye atladı! Yeni seviye: {level}",
+    "roles": {
+      "5": "LEVEL_5_ROL_ID",
+      "10": "LEVEL_10_ROL_ID",
+      "20": "LEVEL_20_ROL_ID"
+    }
+  },
+  
+  "backupSystem": {
+    "enabled": true,
+    "autoBackup": true,
+    "backupInterval": 86400000,
+    "maxBackups": 10
+  }
+} 

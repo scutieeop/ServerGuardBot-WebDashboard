@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= config.webDashboard.serverName %> - <%= title %></title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="<%= config.webDashboard.serverLogo %>" type="image/png">
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <img src="<%= config.webDashboard.serverLogo %>" alt="Logo" class="navbar-logo">
+        <%= config.webDashboard.serverName %>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="/"><i class="bi bi-house-door-fill"></i> Ana Sayfa</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="/dashboard"><i class="bi bi-speedometer2"></i> Kontrol Paneli</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Çıkış</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-4">
+    <div class="row">
+      <div class="col-md-3">
+        <div class="card mb-4">
+          <div class="card-body text-center">
+            <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="<%= user.username %>" class="img-fluid rounded-circle mb-3" style="width: 100px; height: 100px;">
+            <h5 class="card-title"><%= user.username %></h5>
+            <p class="card-text"><small class="text-muted">ID: <%= user.id %></small></p>
+            <hr>
+            <h6>Sunucu İstatistikleri</h6>
+            <div class="row text-center mt-3">
+              <div class="col-6">
+                <h4><%= guild.memberCount %></h4>
+                <small>Üye</small>
+              </div>
+              <div class="col-6">
+                <h4><%= guild.channels.cache.size %></h4>
+                <small>Kanal</small>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="list-group mb-4">
+          <a href="/dashboard" class="list-group-item list-group-item-action active">
+            <i class="bi bi-speedometer2 me-2"></i> Genel Bakış
+          </a>
+          <a href="/dashboard/users" class="list-group-item list-group-item-action">
+            <i class="bi bi-people-fill me-2"></i> Kayıtlı Kullanıcılar
+          </a>
+          <a href="/dashboard/devices" class="list-group-item list-group-item-action">
+            <i class="bi bi-laptop me-2"></i> Cihaz İstatistikleri
+          </a>
+        </div>
+      </div>
+      
+      <div class="col-md-9">
+        <div class="row">
+          <div class="col-md-4">
+            <div class="card bg-primary text-white mb-4">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h5 class="card-title">Toplam Üye</h5>
+                    <h2 class="mb-0"><%= guild.memberCount %></h2>
+                  </div>
+                  <i class="bi bi-people-fill display-4"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card bg-success text-white mb-4">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h5 class="card-title">Çevrimiçi</h5>
+                    <h2 class="mb-0"><%= guild.members.cache.filter(m => m.presence?.status === 'online').size || 0 %></h2>
+                  </div>
+                  <i class="bi bi-person-check-fill display-4"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card bg-info text-white mb-4">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <h5 class="card-title">Bot Sayısı</h5>
+                    <h2 class="mb-0"><%= guild.members.cache.filter(m => m.user.bot).size %></h2>
+                  </div>
+                  <i class="bi bi-robot display-4"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Sunucu Durumu</h5>
+            <span class="badge bg-success">Aktif</span>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <h6><i class="bi bi-shield-lock me-2"></i> Koruma Sistemleri</h6>
+                <ul class="list-group mb-3">
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Anti-Spam
+                    <span class="badge bg-<%= config.serverGuard.antiSpam.enabled ? 'success' : 'danger' %>">
+                      <%= config.serverGuard.antiSpam.enabled ? 'Aktif' : 'Pasif' %>
+                    </span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Anti-Raid
+                    <span class="badge bg-<%= config.serverGuard.antiRaid.enabled ? 'success' : 'danger' %>">
+                      <%= config.serverGuard.antiRaid.enabled ? 'Aktif' : 'Pasif' %>
+                    </span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Küfür Filtresi
+                    <span class="badge bg-<%= config.profanityFilter.enabled ? 'success' : 'danger' %>">
+                      <%= config.profanityFilter.enabled ? 'Aktif' : 'Pasif' %>
+                    </span>
+                  </li>
+                </ul>
+              </div>
+              <div class="col-md-6">
+                <h6><i class="bi bi-gear-fill me-2"></i> Sistem Durumu</h6>
+                <ul class="list-group">
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Kayıt Sistemi
+                    <span class="badge bg-<%= config.registrationSystem.enabled ? 'success' : 'danger' %>">
+                      <%= config.registrationSystem.enabled ? 'Aktif' : 'Pasif' %>
+                    </span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Web Paneli
+                    <span class="badge bg-<%= config.webDashboard.enabled ? 'success' : 'danger' %>">
+                      <%= config.webDashboard.enabled ? 'Aktif' : 'Pasif' %>
+                    </span>
+                  </li>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    Seviye Sistemi
+                    <span class="badge bg-<%= config.levelSystem.enabled ? 'success' : 'danger' %>">
+                      <%= config.levelSystem.enabled ? 'Aktif' : 'Pasif' %>
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h5 class="mb-0">Hızlı Bağlantılar</h5>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <a href="/dashboard/users" class="btn btn-primary w-100 h-100 d-flex flex-column justify-content-center align-items-center" style="height: 120px;">
+                  <i class="bi bi-people-fill display-4 mb-2"></i>
+                  <span>Kayıtlı Kullanıcılar</span>
+                </a>
+              </div>
+              <div class="col-md-4 mb-3">
+                <a href="/dashboard/devices" class="btn btn-info w-100 h-100 d-flex flex-column justify-content-center align-items-center text-white" style="height: 120px;">
+                  <i class="bi bi-laptop display-4 mb-2"></i>
+                  <span>Cihaz İstatistikleri</span>
+                </a>
+              </div>
+              <div class="col-md-4 mb-3">
+                <a href="https://discord.com/channels/<%= guild.id %>" target="_blank" class="btn btn-secondary w-100 h-100 d-flex flex-column justify-content-center align-items-center" style="height: 120px;">
+                  <i class="bi bi-discord display-4 mb-2"></i>
+                  <span>Discord Sunucusu</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bg-dark text-white py-4 mt-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6">
+          <h5><%= config.webDashboard.serverName %></h5>
+          <p class="small">© <%= new Date().getFullYear() %> Tüm hakları saklıdır.</p>
+        </div>
+        <div class="col-md-6 text-md-end">
+          <p class="mb-0">
+            <a href="https://discord.gg/DAVET_KODU" class="text-white me-3"><i class="bi bi-discord"></i> Discord</a>
+            <a href="https://github.com/GITHUB_USER/REPO_NAME" class="text-white"><i class="bi bi-github"></i> GitHub</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/main.js"></script>
+</body>
+</html> 
