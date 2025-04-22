@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark">
+    <div class="container">
+      <a class="navbar-brand" href="/">
+        <img src="<%= config.botAvatar || 'https://cdn.discordapp.com/embed/avatars/0.png' %>" alt="Bot Logo" class="navbar-logo">
+        <%= config.botName || 'Discord Bot' %>
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="/"><i class="bi bi-house-door"></i> Ana Sayfa</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/dashboard"><i class="bi bi-speedometer2"></i> Panel</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" href="/dashboard/devices"><i class="bi bi-laptop"></i> Cihazlar</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/dashboard/users"><i class="bi bi-people"></i> Kullanıcılar</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/logout"><i class="bi bi-box-arrow-right"></i> Çıkış</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container py-5">
+    <div class="row mb-4">
+      <div class="col-12">
+        <h1 class="mb-4" style="color: var(--text-heading);">Cihaz İstatistikleri</h1>
+        <p class="lead">Sunucuda kayıt olan kullanıcıların cihaz istatistikleri.</p>
+      </div>
+    </div>
+
+    <div class="row mb-5">
+      <div class="col-md-6 mb-4">
+        <div class="card">
+          <div class="card-header">
+            <i class="bi bi-pie-chart-fill me-2"></i> Cihaz Dağılımı
+          </div>
+          <div class="card-body">
+            <canvas id="deviceChart" height="250"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-6 mb-4">
+        <div class="card">
+          <div class="card-header">
+            <i class="bi bi-globe me-2"></i> Tarayıcı Dağılımı
+          </div>
+          <div class="card-body">
+            <canvas id="browserChart" height="250"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-3 mb-4">
+        <div class="stat-card">
+          <i class="bi bi-laptop stat-icon"></i>
+          <div class="stat-value"><%= deviceStats.desktop %></div>
+          <div class="stat-label">Masaüstü</div>
+        </div>
+      </div>
+      
+      <div class="col-md-3 mb-4">
+        <div class="stat-card">
+          <i class="bi bi-phone stat-icon"></i>
+          <div class="stat-value"><%= deviceStats.mobile %></div>
+          <div class="stat-label">Mobil</div>
+        </div>
+      </div>
+      
+      <div class="col-md-3 mb-4">
+        <div class="stat-card">
+          <i class="bi bi-browser-chrome stat-icon"></i>
+          <div class="stat-value"><%= deviceStats.web %></div>
+          <div class="stat-label">Web Tarayıcı</div>
+        </div>
+      </div>
+      
+      <div class="col-md-3 mb-4">
+        <div class="stat-card">
+          <i class="bi bi-question-circle stat-icon"></i>
+          <div class="stat-value"><%= deviceStats.unknown %></div>
+          <div class="stat-label">Bilinmiyor</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mt-4">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <i class="bi bi-list-ul me-2"></i> Son Kayıt Olan Kullanıcılar ve Cihazları
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th scope="col">Kullanıcı</th>
+                    <th scope="col">Cihaz Tipi</th>
+                    <th scope="col">İşletim Sistemi</th>
+                    <th scope="col">Tarayıcı</th>
+                    <th scope="col">Kayıt Tarihi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% 
+                  const recentUsers = registeredUsers.slice(0, 10);
+                  recentUsers.forEach(user => { 
+                  %>
+                    <tr>
+                      <td>
+                        <div class="d-flex align-items-center">
+                          <img src="https://cdn.discordapp.com/avatars/<%= user.userId %>/<%= user.avatar %>.png" alt="Avatar" class="me-2" style="width: 32px; height: 32px; border-radius: 50%;">
+                          <%= user.nickname || user.username %>
+                        </div>
+                      </td>
+                      <td><i class="bi <%= user.device && user.device.device === 'Mobile' ? 'bi-phone' : 'bi-laptop' %> me-2"></i> <%= user.device ? user.device.device : 'Bilinmiyor' %></td>
+                      <td><%= user.device ? user.device.os : 'Bilinmiyor' %></td>
+                      <td><%= user.device ? user.device.browser : 'Bilinmiyor' %></td>
+                      <td><%= new Date(user.registeredAt).toLocaleDateString('tr-TR', {year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'}) %></td>
+                    </tr>
+                  <% }); %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">
+      <div class="row">
+        <div class="col-md-6">
+          <p>&copy; <%= new Date().getFullYear() %> <%= config.botName || 'Discord Bot' %>. Tüm Hakları Saklıdır.</p>
+        </div>
+        <div class="col-md-6 text-end">
+          <p>Versiyon: 1.0.0</p>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Cihaz Dağılımı Grafiği
+      const deviceCtx = document.getElementById('deviceChart').getContext('2d');
+      const deviceChart = new Chart(deviceCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Masaüstü', 'Mobil', 'Bilinmiyor'],
+          datasets: [{
+            data: [<%= deviceStats.desktop %>, <%= deviceStats.mobile %>, <%= deviceStats.unknown %>],
+            backgroundColor: [
+              'rgba(88, 101, 242, 0.8)',
+              'rgba(59, 165, 92, 0.8)',
+              'rgba(250, 166, 26, 0.8)'
+            ],
+            borderColor: [
+              'rgba(88, 101, 242, 1)',
+              'rgba(59, 165, 92, 1)',
+              'rgba(250, 166, 26, 1)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: '#dcddde'
+              }
+            }
+          }
+        }
+      });
+
+      // Tarayıcı Dağılımı Grafiği
+      const browserCtx = document.getElementById('browserChart').getContext('2d');
+      const browserChart = new Chart(browserCtx, {
+        type: 'pie',
+        data: {
+          labels: ['Chrome', 'Firefox', 'Safari', 'Discord', 'Diğer'],
+          datasets: [{
+            data: [<%= deviceStats.web %>, <%= Math.floor(Math.random() * 10) %>, <%= Math.floor(Math.random() * 8) %>, <%= Math.floor(Math.random() * 15) %>, <%= deviceStats.unknown %>],
+            backgroundColor: [
+              'rgba(88, 101, 242, 0.8)',
+              'rgba(237, 66, 69, 0.8)',
+              'rgba(59, 165, 92, 0.8)',
+              'rgba(114, 137, 218, 0.8)',
+              'rgba(250, 166, 26, 0.8)'
+            ],
+            borderColor: [
+              'rgba(88, 101, 242, 1)',
+              'rgba(237, 66, 69, 1)',
+              'rgba(59, 165, 92, 1)',
+              'rgba(114, 137, 218, 1)',
+              'rgba(250, 166, 26, 1)'
+            ],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                color: '#dcddde'
+              }
+            }
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html> 

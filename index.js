@@ -8,7 +8,6 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config.json');
 const { joinVoiceChannel } = require('@discordjs/voice');
-const mongoose = require('mongoose');
 require('dotenv').config();
 
 // Import handlers
@@ -36,19 +35,6 @@ const client = new Client({
 client.commands = new Collection();
 client.cooldowns = new Collection();
 client.userAgents = new Collection(); // Kullanıcı cihaz bilgisi saklamak için
-
-// MongoDB bağlantısı
-async function connectToDatabase() {
-  try {
-    const dbUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/discord-bot';
-    await mongoose.connect(dbUri);
-    console.log('[INFO] MongoDB bağlantısı başarılı!');
-    return true;
-  } catch (error) {
-    console.error('[ERROR] MongoDB bağlantısı başarısız:', error);
-    return false;
-  }
-}
 
 // Load commands
 const commandsPath = path.join(__dirname, 'commands');
@@ -136,23 +122,18 @@ client.once(Events.ClientReady, async () => {
     console.error('[ERROR] Failed to register slash commands:', error);
   }
   
-  // MongoDB'ye bağlan
-  const dbConnected = await connectToDatabase();
-  
   // Guild Manager'ı başlat
   client.guildManager = new GuildManager(client);
   console.log('[INFO] Guild Manager initialized.');
   
-  // Web panelini başlat (eğer etkinse ve veritabanı bağlantısı başarılıysa)
-  if (config.webDashboard.enabled && dbConnected) {
+  // Web panelini başlat (eğer etkinse)
+  if (config.webDashboard.enabled) {
     try {
-      client.webDashboard = new WebDashboard(client);
+      client.webDashboard = new WebDashboard(client, config);
       console.log('[INFO] Web dashboard initialized.');
     } catch (error) {
       console.error('[ERROR] Web dashboard initialization failed:', error);
     }
-  } else if (config.webDashboard.enabled && !dbConnected) {
-    console.warn('[WARNING] Web dashboard not initialized because MongoDB connection failed.');
   } else {
     console.log('[INFO] Web dashboard is disabled in config.');
   }

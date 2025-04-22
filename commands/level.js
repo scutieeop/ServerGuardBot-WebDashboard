@@ -1,10 +1,15 @@
 const { SlashCommandBuilder, EmbedBuilder, AttachmentBuilder } = require('discord.js');
-const { createCanvas, loadImage, registerFont } = require('canvas');
 const path = require('path');
 const fs = require('fs');
+const db = require('../modules/database');
+const config = require('../config.json');
 
-// Level system data (in a real implementation, this would be stored in a database)
-const userLevels = new Map();
+// Progress bar creator function
+function createProgressBar(percent, size = 20, filledChar = '▰', emptyChar = '▱') {
+  const filled = Math.round(size * (percent / 100));
+  const empty = size - filled;
+  return filledChar.repeat(filled) + emptyChar.repeat(empty);
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -27,6 +32,14 @@ module.exports = {
     ),
   
   async execute(interaction) {
+    // Check if level system is enabled
+    if (!config.levelSystem.enabled) {
+      return interaction.reply({
+        content: 'Seviye sistemi şu anda devre dışı.',
+        ephemeral: true
+      });
+    }
+    
     const subcommand = interaction.options.getSubcommand();
     
     switch (subcommand) {
@@ -39,25 +52,6 @@ module.exports = {
     }
   },
 };
-
-// Helper function to get level data for a user
-function getUserData(userId, guildId) {
-  const key = `${guildId}-${userId}`;
-  
-  if (!userLevels.has(key)) {
-    // Initialize a new user
-    userLevels.set(key, {
-      userId,
-      guildId,
-      xp: Math.floor(Math.random() * 500), // Random initial XP for demonstration
-      level: 1,
-      messages: Math.floor(Math.random() * 100), // Random message count for demonstration
-      lastMessage: Date.now()
-    });
-  }
-  
-  return userLevels.get(key);
-}
 
 // Calculate level based on XP
 function calculateLevel(xp) {
@@ -74,151 +68,85 @@ async function handleLevelCard(interaction) {
   await interaction.deferReply();
   
   const user = interaction.options.getUser('kullanıcı') || interaction.user;
-  const userData = getUserData(user.id, interaction.guild.id);
+  const userData = await db.getUserData(user.id, interaction.guild.id);
   
   // Calculate current level and XP
-  userData.level = calculateLevel(userData.xp);
-  const currentLevelXP = Math.pow(userData.level * 10, 2);
-  const nextLevelXP = getRequiredXP(userData.level);
+  const level = userData.level || 0;
+  const currentLevelXP = Math.pow(level * 10, 2);
+  const nextLevelXP = getRequiredXP(level);
   const xpNeeded = nextLevelXP - currentLevelXP;
   const xpProgress = userData.xp - currentLevelXP;
-  const progressPercent = (xpProgress / xpNeeded) * 100;
+  const progressPercent = Math.min(Math.max(Math.floor((xpProgress / xpNeeded) * 100), 0), 100);
   
-  // Create canvas for level card
-  const canvas = createCanvas(800, 300);
-  const ctx = canvas.getContext('2d');
+  // Get member information for roles/nickname
+  const member = await interaction.guild.members.fetch(user.id).catch(() => null);
+  const nickname = member ? member.nickname || user.username : user.username;
   
-  // Background
-  ctx.fillStyle = '#23272A';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Create a progress bar
+  const progressBar = createProgressBar(progressPercent, 15);
   
-  // Create a gradient for the card
-  const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-  gradient.addColorStop(0, '#9B59B6');
-  gradient.addColorStop(1, '#3498DB');
-  
-  // Draw gradient border
-  ctx.strokeStyle = gradient;
-  ctx.lineWidth = 8;
-  ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
-  
-  // Get user avatar
-  const avatarURL = user.displayAvatarURL({ extension: 'png', size: 256 });
-  const avatar = await loadImage(avatarURL);
-  
-  // Draw circle for avatar
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(150, 150, 80, 0, Math.PI * 2, true);
-  ctx.closePath();
-  ctx.clip();
-  ctx.drawImage(avatar, 70, 70, 160, 160);
-  ctx.restore();
-  
-  // Draw username
-  ctx.font = 'bold 38px Arial';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(user.username, 280, 100);
-  
-  // Draw level information
-  ctx.font = 'bold 32px Arial';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillText(`Seviye: ${userData.level}`, 280, 150);
-  ctx.fillText(`XP: ${userData.xp} / ${nextLevelXP}`, 280, 190);
-  ctx.fillText(`Mesaj: ${userData.messages}`, 280, 230);
-  
-  // Draw progress bar background
-  ctx.fillStyle = '#2C2F33';
-  ctx.fillRect(280, 250, 450, 30);
-  
-  // Draw progress bar
-  ctx.fillStyle = gradient;
-  ctx.fillRect(280, 250, 450 * (progressPercent / 100), 30);
-  
-  // Create attachment from canvas
-  const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'level-card.png' });
-  
-  // Create embed
+  // Create the embed
   const embed = new EmbedBuilder()
-    .setColor('#9B59B6')
-    .setTitle(`${user.username} Seviye Kartı`)
-    .setImage('attachment://level-card.png')
-    .setFooter({ text: 'Seviye kartı' })
+    .setColor(member?.displayHexColor || '#3498DB')
+    .setTitle(`${nickname} · Seviye Kartı`)
+    .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 512 }))
+    .addFields(
+      { name: '👤 Kullanıcı', value: `<@${user.id}>`, inline: true },
+      { name: '✨ Seviye', value: `${level}`, inline: true },
+      { name: '📊 Toplam XP', value: `${userData.xp || 0} XP`, inline: true },
+      { name: '💬 Mesaj Sayısı', value: `${userData.messageCount || 0}`, inline: true },
+      { name: '📈 Sonraki Seviye', value: `${xpProgress}/${xpNeeded} XP`, inline: true },
+      { name: '⏱️ Son Aktivite', value: userData.lastMessageAt ? `<t:${Math.floor(new Date(userData.lastMessageAt).getTime() / 1000)}:R>` : 'Hiç', inline: true },
+      { name: `İlerleme · %${progressPercent}`, value: progressBar }
+    )
+    .setFooter({ text: `ID: ${user.id}` })
     .setTimestamp();
   
-  await interaction.editReply({ embeds: [embed], files: [attachment] });
+  await interaction.editReply({ embeds: [embed] });
 }
 
 // Handle leaderboard command
 async function handleLeaderboard(interaction) {
   await interaction.deferReply();
   
-  // Get guild users from level data
-  const guildUsersData = [...userLevels.entries()]
-    .filter(([key]) => key.startsWith(interaction.guild.id))
-    .map(([_, userData]) => userData)
-    .sort((a, b) => b.xp - a.xp)
-    .slice(0, 10);
+  // Get the leaderboard data
+  const leaderboard = await db.getLeaderboard(interaction.guild.id, 10);
   
-  // If no data available, add some random demo data
-  if (guildUsersData.length === 0) {
-    // Add random data for example purposes
-    const members = await interaction.guild.members.fetch({ limit: 10 });
-    
-    members.forEach(member => {
-      if (!member.user.bot) {
-        getUserData(member.id, interaction.guild.id); // This will create the user data
-      }
-    });
-    
-    // Re-fetch the data
-    guildUsersData.push(...[...userLevels.entries()]
-      .filter(([key]) => key.startsWith(interaction.guild.id))
-      .map(([_, userData]) => userData)
-      .sort((a, b) => b.xp - a.xp)
-      .slice(0, 10));
+  if (!leaderboard || leaderboard.length === 0) {
+    return interaction.editReply('Henüz seviye sıralamasında veri bulunmuyor!');
   }
   
-  // Create leaderboard embed
+  // Create medal emojis for top 3
+  const medals = ['🥇', '🥈', '🥉'];
+  
+  // Build the leaderboard description
+  let description = '__**🏆 Sunucu Sıralaması**__\n\n';
+  
+  for (let i = 0; i < leaderboard.length; i++) {
+    const data = leaderboard[i];
+    const rank = i + 1;
+    const medal = rank <= 3 ? medals[i] : `${rank}.`;
+    
+    // Try to get member data
+    const member = await interaction.guild.members.fetch(data.id || data.userId).catch(() => null);
+    const name = member ? member.displayName : `Kullanıcı#${data.id || data.userId}`;
+    
+    description += `${medal} **${name}** · Seviye ${data.level || 0} · ${data.xp || 0} XP · ${data.messageCount || 0} mesaj\n`;
+  }
+  
+  // Create the embed
   const embed = new EmbedBuilder()
-    .setColor('#3498DB')
-    .setTitle('📊 Seviye Sıralaması')
+    .setColor('#FFC83D')
+    .setTitle(`📊 ${interaction.guild.name} Seviye Sıralaması`)
+    .setDescription(description)
     .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
-    .setDescription('Sunucudaki en aktif üyelerin sıralaması:')
-    .setFooter({ text: `${interaction.guild.name} | Toplam Veri: ${guildUsersData.length}`, iconURL: interaction.guild.iconURL() })
+    .setFooter({ text: `${interaction.guild.name} · Toplam ${leaderboard.length} kullanıcı` })
     .setTimestamp();
-  
-  // Add fields for top users
-  for (let i = 0; i < guildUsersData.length; i++) {
-    const userData = guildUsersData[i];
-    const member = await interaction.guild.members.fetch(userData.userId).catch(() => null);
-    
-    if (member) {
-      embed.addFields({
-        name: `${i + 1}. ${member.user.username}`,
-        value: `Seviye: **${calculateLevel(userData.xp)}** | XP: **${userData.xp}** | Mesaj: **${userData.messages}**`,
-        inline: false
-      });
-    }
-  }
   
   await interaction.editReply({ embeds: [embed] });
 }
 
 // Function to add XP when users send messages (this would be called from messageCreate event)
 function addXP(userId, guildId, xpToAdd = 10) {
-  const userData = getUserData(userId, guildId);
-  const oldLevel = calculateLevel(userData.xp);
-  
-  userData.xp += xpToAdd;
-  userData.messages += 1;
-  userData.lastMessage = Date.now();
-  
-  const newLevel = calculateLevel(userData.xp);
-  
-  return {
-    leveledUp: newLevel > oldLevel,
-    newLevel,
-    userData
-  };
+  return db.addXP(userId, guildId, xpToAdd);
 } 

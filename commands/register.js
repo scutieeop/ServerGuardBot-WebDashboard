@@ -3,21 +3,21 @@ const config = require('../config.json');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('kayıt')
-    .setDescription('Bir kullanıcıyı kayıt eder.')
+    .setName('register')
+    .setDescription('Registers a user to the server.')
     .addUserOption(option => 
-      option.setName('kullanıcı')
-        .setDescription('Kayıt edilecek kullanıcı')
+      option.setName('user')
+        .setDescription('The user to register')
         .setRequired(true)
     )
     .addStringOption(option =>
-      option.setName('isim')
-        .setDescription('Kullanıcının ismi')
+      option.setName('name')
+        .setDescription('User\'s name')
         .setRequired(true)
     )
     .addStringOption(option =>
-      option.setName('yaş')
-        .setDescription('Kullanıcının yaşı')
+      option.setName('age')
+        .setDescription('User\'s age')
         .setRequired(true)
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
@@ -42,10 +42,10 @@ module.exports = {
       }
       
       // Get user, name and age from options
-      const targetUser = interaction.options.getUser('kullanıcı');
+      const targetUser = interaction.options.getUser('user');
       const targetMember = await interaction.guild.members.fetch(targetUser.id);
-      const name = interaction.options.getString('isim');
-      const age = interaction.options.getString('yaş');
+      const name = interaction.options.getString('name');
+      const age = interaction.options.getString('age');
       
       // Check if target user is already registered
       if (targetMember.roles.cache.has(memberRole.id)) {

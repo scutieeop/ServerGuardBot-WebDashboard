@@ -7,31 +7,10 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const config = require('../config.json');
 const UAParser = require('ua-parser-js');
-const mongoose = require('mongoose');
 const moment = require('moment');
+const fs = require('fs');
 moment.locale('tr');
 const { Client, GatewayIntentBits } = require('discord.js');
-
-// Kullanıcı şema ve modeli
-const userSchema = new mongoose.Schema({
-  userId: { type: String, required: true, unique: true },
-  username: { type: String, required: true },
-  discriminator: { type: String },
-  avatar: { type: String },
-  registeredAt: { type: Date, default: Date.now },
-  registrarId: { type: String },
-  nickname: { type: String },
-  originalName: { type: String },
-  age: { type: Number },
-  gender: { type: String, enum: ['male', 'female', 'unspecified'] },
-  device: {
-    browser: { type: String },
-    os: { type: String },
-    device: { type: String }
-  },
-  roles: [{ type: String }],
-  guildID: { type: String, required: true }
-});
 
 // Web kontrol paneli sınıfı
 class WebDashboard {
@@ -41,12 +20,10 @@ class WebDashboard {
     this.app = express();
     this.server = null;
     
-    // Mongoose modeli
-    if (!mongoose.models.User) {
-      this.User = mongoose.model('User', userSchema);
-    } else {
-      this.User = mongoose.models.User;
-    }
+    // JSON veri dosyaları
+    this.dataPath = path.join(__dirname, '../data');
+    this.usersFilePath = path.join(this.dataPath, 'dashboard_users.json');
+    this.ensureDataFiles();
     
     // Express ayarları
     this.setupExpress();
@@ -61,6 +38,17 @@ class WebDashboard {
     this.start();
     
     console.log('[INFO] Web paneli başlatıldı. Port:', config.webDashboard.port);
+  }
+  
+  // Veri dosyalarını kontrol et
+  ensureDataFiles() {
+    if (!fs.existsSync(this.dataPath)) {
+      fs.mkdirSync(this.dataPath, { recursive: true });
+    }
+    
+    if (!fs.existsSync(this.usersFilePath)) {
+      fs.writeFileSync(this.usersFilePath, JSON.stringify({}), 'utf8');
+    }
   }
   
   // Express ayarları
@@ -83,7 +71,7 @@ class WebDashboard {
     
     // Session
     this.app.use(session({
-      secret: this.config.webDashboard.sessionSecret || 'discord-bot-secret',
+      secret: this.config.webDashboard.secret || 'discord-bot-secret',
       resave: false,
       saveUninitialized: false,
       cookie: { maxAge: 86400000 } // 1 gün
@@ -131,15 +119,19 @@ class WebDashboard {
       res.render('index', { 
         user: req.user,
         config: this.config,
-        client: this.client
+        client: this.client,
+        bot: this.client,
+        title: 'Ana Sayfa'
       });
     });
     
     // Discord login
-    this.app.get('/login', passport.authenticate('discord'));
+    this.app.get('/auth/discord', passport.authenticate('discord', {
+      scope: ['identify', 'guilds']
+    }));
     
     // Discord callback
-    this.app.get('/callback', 
+    this.app.get('/auth/discord/callback', 
       passport.authenticate('discord', { 
         failureRedirect: '/' 
       }), 
@@ -161,19 +153,20 @@ class WebDashboard {
       if (req.isAuthenticated()) {
         return next();
       }
-      res.redirect('/login');
+      res.redirect('/auth/discord');
     };
     
     // Dashboard
     this.app.get('/dashboard', checkAuth, (req, res) => {
       // Kullanıcının bulunduğu sunucuları kontrol ederiz
-      const guild = this.client.guilds.cache.get(this.config.webDashboard.guildID);
+      const guild = this.client.guilds.cache.get(this.config.guildId);
       
       if (!guild) {
         return res.status(404).render('error', { 
           error: 'Sunucu bulunamadı',
           user: req.user,
-          config: this.config
+          config: this.config,
+          title: 'Hata'
         });
       }
       
@@ -181,41 +174,44 @@ class WebDashboard {
         user: req.user,
         guild: guild,
         config: this.config,
-        client: this.client
+        client: this.client,
+        title: 'Kontrol Paneli'
       });
     });
     
     // Kayıtlı kullanıcılar sayfası
     this.app.get('/dashboard/users', checkAuth, async (req, res) => {
       try {
-        const guild = this.client.guilds.cache.get(this.config.webDashboard.guildID);
+        const guild = this.client.guilds.cache.get(this.config.guildId);
         
         if (!guild) {
           return res.status(404).render('error', { 
             error: 'Sunucu bulunamadı',
             user: req.user,
-            config: this.config
+            config: this.config,
+            title: 'Hata'
           });
         }
         
-        // Veritabanından kayıtlı kullanıcıları çek
-        const registeredUsers = await this.User.find({
-          guildID: this.config.webDashboard.guildID
-        }).sort({ registrationDate: -1 });
+        // JSON dosyasından kayıtlı kullanıcıları çek
+        const registeredUsers = await this.getAllUsers();
         
         res.render('users', {
           user: req.user,
           guild: guild,
           registeredUsers: registeredUsers,
           config: this.config,
-          client: this.client
+          client: this.client,
+          moment: moment,
+          title: 'Kayıtlı Kullanıcılar'
         });
       } catch (error) {
         console.error('Kullanıcılar sayfası yüklenirken hata:', error);
         res.status(500).render('error', {
           error: 'Kayıtlı kullanıcılar yüklenirken bir hata oluştu',
           user: req.user,
-          config: this.config
+          config: this.config,
+          title: 'Hata'
         });
       }
     });
@@ -223,26 +219,25 @@ class WebDashboard {
     // Cihaz istatistikleri sayfası
     this.app.get('/dashboard/devices', checkAuth, async (req, res) => {
       try {
-        const guild = this.client.guilds.cache.get(this.config.webDashboard.guildID);
+        const guild = this.client.guilds.cache.get(this.config.guildId);
         
         if (!guild) {
           return res.status(404).render('error', { 
             error: 'Sunucu bulunamadı',
             user: req.user,
-            config: this.config
+            config: this.config,
+            title: 'Hata'
           });
         }
         
-        // Veritabanından kullanıcıları çek
-        const registeredUsers = await this.User.find({
-          guildID: this.config.webDashboard.guildID
-        });
+        // JSON dosyasından kullanıcıları çek
+        const registeredUsers = await this.getAllUsers();
         
         // Cihaz istatistiklerini hesapla
         const deviceStats = {
-          desktop: registeredUsers.filter(u => u.device && u.device.includes('desktop')).length,
-          mobile: registeredUsers.filter(u => u.device && u.device.includes('mobile')).length,
-          web: registeredUsers.filter(u => u.device && u.device.includes('web')).length,
+          desktop: registeredUsers.filter(u => u.device && u.device.device === 'Desktop').length,
+          mobile: registeredUsers.filter(u => u.device && u.device.device === 'Mobile').length,
+          web: registeredUsers.filter(u => u.device && u.device.browser === 'Chrome').length,
           unknown: registeredUsers.filter(u => !u.device).length
         };
         
@@ -252,14 +247,16 @@ class WebDashboard {
           registeredUsers: registeredUsers,
           deviceStats: deviceStats,
           config: this.config,
-          client: this.client
+          client: this.client,
+          title: 'Cihaz İstatistikleri'
         });
       } catch (error) {
         console.error('Cihazlar sayfası yüklenirken hata:', error);
         res.status(500).render('error', {
           error: 'Cihaz istatistikleri yüklenirken bir hata oluştu',
           user: req.user,
-          config: this.config
+          config: this.config,
+          title: 'Hata'
         });
       }
     });
@@ -269,11 +266,8 @@ class WebDashboard {
       try {
         const userId = req.params.userId;
         
-        // Veritabanından kullanıcıyı bul
-        const userRecord = await this.User.findOne({
-          userID: userId,
-          guildID: this.config.webDashboard.guildID
-        });
+        // JSON dosyasından kullanıcıyı bul
+        const userRecord = await this.getUser(userId);
         
         if (!userRecord) {
           return res.status(404).json({ error: 'Kullanıcı bulunamadı' });
@@ -291,7 +285,8 @@ class WebDashboard {
       res.status(404).render('error', {
         error: 'Sayfa bulunamadı',
         user: req.user,
-        config: this.config
+        config: this.config,
+        title: 'Sayfa Bulunamadı'
       });
     });
   }
@@ -326,7 +321,7 @@ class WebDashboard {
     };
   }
   
-  // Kullanıcı kaydet/güncelle
+  // Kullanıcı kaydet/güncelle (JSON dosya kullanarak)
   async registerUser(userId, registrarId, userData, userAgent) {
     try {
       // Cihaz bilgisi analiz et
@@ -344,43 +339,65 @@ class WebDashboard {
         gender: userData.gender || 'unspecified',
         registrarId: registrarId,
         device: deviceInfo,
-        guildID: this.config.webDashboard.guildID
+        guildID: this.config.guildId,
+        registeredAt: new Date().toISOString()
       };
       
-      // Kullanıcı var mı diye kontrol et
-      let user = await this.User.findOne({ userId: userId });
-      
-      if (user) {
-        // Kullanıcı varsa güncelle
-        Object.assign(user, userInfo);
-        await user.save();
-        return user;
-      } else {
-        // Kullanıcı yoksa oluştur
-        const newUser = new this.User(userInfo);
-        await newUser.save();
-        return newUser;
+      // JSON dosyasından mevcut verileri oku
+      let users = {};
+      if (fs.existsSync(this.usersFilePath)) {
+        users = JSON.parse(fs.readFileSync(this.usersFilePath, 'utf8'));
       }
+      
+      // Kullanıcıyı güncelle veya ekle
+      users[userId] = userInfo;
+      
+      // Dosyaya kaydet
+      fs.writeFileSync(this.usersFilePath, JSON.stringify(users, null, 2), 'utf8');
+      
+      return userInfo;
     } catch (error) {
       console.error('[ERROR] Kullanıcı kaydedilirken hata:', error);
       throw error;
     }
   }
   
-  // Kullanıcı bilgilerini getir
+  // Kullanıcı bilgilerini getir (JSON dosya kullanarak)
   async getUser(userId) {
     try {
-      return await this.User.findOne({ userId: userId });
+      // JSON dosyasından mevcut verileri oku
+      let users = {};
+      if (fs.existsSync(this.usersFilePath)) {
+        users = JSON.parse(fs.readFileSync(this.usersFilePath, 'utf8'));
+      }
+      
+      return users[userId] || null;
     } catch (error) {
       console.error('[ERROR] Kullanıcı bilgisi alınırken hata:', error);
       return null;
     }
   }
   
-  // Tüm kayıtlı kullanıcıları getir
+  // Tüm kayıtlı kullanıcıları getir (JSON dosya kullanarak)
   async getAllUsers() {
     try {
-      return await this.User.find({}).sort({ registeredAt: -1 });
+      // JSON dosyasından mevcut verileri oku
+      let users = {};
+      if (fs.existsSync(this.usersFilePath)) {
+        users = JSON.parse(fs.readFileSync(this.usersFilePath, 'utf8'));
+      }
+      
+      // Object değerlerini diziye dönüştür
+      const usersArray = Object.values(users);
+      
+      // Kayıt tarihine göre sırala (en yeni en üstte)
+      usersArray.sort((a, b) => {
+        const dateA = new Date(a.registeredAt || 0);
+        const dateB = new Date(b.registeredAt || 0);
+        return dateB - dateA;
+      });
+      
+      return usersArray;
     } catch (error) {
       console.error('[ERROR] Tüm kullanıcılar alınırken hata:', error);
       return [];
@@ -388,5 +405,4 @@ class WebDashboard {
   }
 }
 
-module.exports = WebDashboard; 
 module.exports = WebDashboard; 

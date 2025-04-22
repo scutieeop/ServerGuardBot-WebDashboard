@@ -90,7 +90,10 @@ class Database {
                     mod: [],
                     unregistered: null,
                     erkek: [],
-                    kadin: []
+                    kadin: [],
+                    male: null,
+                    female: null,
+                    member: null
                 },
                 moderation: {
                     antiSpam: false,
@@ -176,6 +179,19 @@ class Database {
         guildUsers.sort((a, b) => b.xp - a.xp);
         
         return guildUsers.slice(0, limit);
+    }
+    
+    // Save user data (for compatibility with kayit.js)
+    async saveUser(userData) {
+        if (!userData.userId && userData.userID) {
+            userData.userId = userData.userID;
+        }
+        
+        if (!userData.guildId && userData.guildID) {
+            userData.guildId = userData.guildID;
+        }
+        
+        return this.registerUser(userData.guildId, userData.userId, userData);
     }
 }
 
